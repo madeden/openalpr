@@ -32,6 +32,23 @@ namespace alpr
 
 
 
+#ifndef OPENCV32
+
+    cuda_cascade = cuda::CascadeClassifier::create(get_detector_file());
+    if( !this->cuda_cascade.get()->empty() )
+    {
+      this->loaded = true;
+      printf("--(!)Loaded CUDA classifier\n");
+    }
+    else
+    {
+      this->loaded = false;
+      printf("--(!)Error loading CPU classifier %s\n", get_detector_file().c_str());
+    }
+  }
+
+#else
+
     if( this->cuda_cascade.load( get_detector_file() ) )
     {
       this->loaded = true;
@@ -44,6 +61,7 @@ namespace alpr
     }
   }
 
+#endif
 
   DetectorCUDA::~DetectorCUDA() {
   }
@@ -52,18 +70,41 @@ namespace alpr
   {
     //-- Detect plates
     vector<Rect> plates;
-    
+
     timespec startTime;
     getTimeMonotonic(&startTime);
+#ifndef OPENCV32
+
+    cuda::GpuMat cudaFrame, plateregions_buffer;
+
+#else
 
     gpu::GpuMat cudaFrame, plateregions_buffer;
+
+#endif
     Mat plateregions_downloaded;
 
     cudaFrame.upload(frame);
-    int numdetected = cuda_cascade.detectMultiScale(cudaFrame, plateregions_buffer, 
-            (double) config->detection_iteration_increase, config->detectionStrictness, 
-            min_plate_size);
-    
+#ifndef OPENCV32
+
+    cuda_cascade->setScaleFactor((double) config->detection_iteration_increase);
+    cuda_cascade->setMaxNumObjects(config->detectionStrictness);
+    cuda_cascade->setMinObjectSize(min_plate_size);
+    cuda_cascade->detectMultiScale(cudaFrame, plateregions_buffer);
+    cuda_cascade->convert(plateregions_buffer,plates);
+    if (config->debugTiming)
+    {
+      timespec endTime;
+      getTimeMonotonic(&endTime);
+      cout << "LBP Time: " << diffclock(startTime, endTime) << "ms." << endl;
+    }
+
+#else
+
+    int numdetected = cuda_cascade.detectMultiScale(cudaFrame, plateregions_buffer,
+        (double) config->detection_iteration_increase, config->detectionStrictness,
+        min_plate_size);
+
     plateregions_buffer.colRange(0, numdetected).download(plateregions_downloaded);
 
     for (int i = 0; i < numdetected; ++i)
@@ -77,10 +118,13 @@ namespace alpr
       getTimeMonotonic(&endTime);
       cout << "LBP Time: " << diffclock(startTime, endTime) << "ms." << endl;
     }
-    
+
+#endif
+
     return plates;
   }
 
 }
 
 #endif
+
