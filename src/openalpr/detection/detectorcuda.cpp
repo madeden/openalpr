@@ -32,7 +32,7 @@ namespace alpr
 
 
 
-#ifndef OPENCV32
+// #ifndef OPENCV32
 
     cuda_cascade = cuda::CascadeClassifier::create(get_detector_file());
     if( !this->cuda_cascade.get()->empty() )
@@ -47,21 +47,21 @@ namespace alpr
     }
   }
 
-#else
+// #else
 
-    if( this->cuda_cascade.load( get_detector_file() ) )
-    {
-      this->loaded = true;
-      printf("--(!)Loaded CUDA classifier\n");
-    }
-    else
-    {
-      this->loaded = false;
-      printf("--(!)Error loading CPU classifier %s\n", get_detector_file().c_str());
-    }
-  }
+//     if( this->cuda_cascade.load( get_detector_file() ) )
+//     {
+//       this->loaded = true;
+//       printf("--(!)Loaded CUDA classifier\n");
+//     }
+//     else
+//     {
+//       this->loaded = false;
+//       printf("--(!)Error loading CPU classifier %s\n", get_detector_file().c_str());
+//     }
+//   }
 
-#endif
+// #endif
 
   DetectorCUDA::~DetectorCUDA() {
   }
@@ -73,19 +73,19 @@ namespace alpr
 
     timespec startTime;
     getTimeMonotonic(&startTime);
-#ifndef OPENCV32
+// #ifndef OPENCV32
 
     cuda::GpuMat cudaFrame, plateregions_buffer;
 
-#else
+// #else
 
-    gpu::GpuMat cudaFrame, plateregions_buffer;
+//     gpu::GpuMat cudaFrame, plateregions_buffer;
 
-#endif
+// #endif
     Mat plateregions_downloaded;
 
     cudaFrame.upload(frame);
-#ifndef OPENCV32
+// #ifndef OPENCV32
 
     cuda_cascade->setScaleFactor((double) config->detection_iteration_increase);
     cuda_cascade->setMaxNumObjects(config->detectionStrictness);
@@ -99,27 +99,27 @@ namespace alpr
       cout << "LBP Time: " << diffclock(startTime, endTime) << "ms." << endl;
     }
 
-#else
+// #else
 
-    int numdetected = cuda_cascade.detectMultiScale(cudaFrame, plateregions_buffer,
-        (double) config->detection_iteration_increase, config->detectionStrictness,
-        min_plate_size);
+//     int numdetected = cuda_cascade.detectMultiScale(cudaFrame, plateregions_buffer,
+//         (double) config->detection_iteration_increase, config->detectionStrictness,
+//         min_plate_size);
 
-    plateregions_buffer.colRange(0, numdetected).download(plateregions_downloaded);
+//     plateregions_buffer.colRange(0, numdetected).download(plateregions_downloaded);
 
-    for (int i = 0; i < numdetected; ++i)
-    {
-      plates.push_back(plateregions_downloaded.ptr<cv::Rect>()[i]);
-    }
+//     for (int i = 0; i < numdetected; ++i)
+//     {
+//       plates.push_back(plateregions_downloaded.ptr<cv::Rect>()[i]);
+//     }
 
-    if (config->debugTiming)
-    {
-      timespec endTime;
-      getTimeMonotonic(&endTime);
-      cout << "LBP Time: " << diffclock(startTime, endTime) << "ms." << endl;
-    }
+//     if (config->debugTiming)
+//     {
+//       timespec endTime;
+//       getTimeMonotonic(&endTime);
+//       cout << "LBP Time: " << diffclock(startTime, endTime) << "ms." << endl;
+//     }
 
-#endif
+// #endif
 
     return plates;
   }
